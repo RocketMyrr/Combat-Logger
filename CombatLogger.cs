@@ -1,101 +1,17 @@
 ﻿using Rust;
-
 using System;
 using System.Collections.Generic;
-
 using Oxide.Core.Libraries.Covalence;
-
+using Newtonsoft.Json;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Combat Logger", "Tori1157", "1.0.6", ResourceId = 2790)]
+    [Info("Combat Logger", "Tori1157", "1.0.6")]
     [Description("Logs everything related to combat.")]
 
-    class CombatLogger : CovalencePlugin
+    class UltimateCombatLogger : CovalencePlugin
     {
-        #region Fields
-
-        /// -- Misc -- ///
-        private bool Changed;
-
-        /// -- Combat -- ///
-        public bool logHealingItems;
-        public bool putHealingItems;
-        public bool logRespawns;
-        public bool putRespawns;
-        public bool logAnimalAttackPlayer;
-        public bool putAnimalAttackPlayer;
-        public bool logPlayerAttackAnimal;
-        public bool putPlayerAttackAnimal;
-        public bool logEntityAttackPlayer;
-        public bool putEntityAttackPlayer;
-        public bool logCombat;
-        public bool putCombat;
-        public bool logAnimalKillPlayer;
-        public bool putAnimalKillPlayer;
-        public bool logPlayerKillAnimal;
-        public bool putPlayerKillAnimal;
-        public bool logEntityKillPlayer;
-        public bool putEntityKillPlayer;
-        public bool logEntityDistance;
-        public bool logOtherDeathCauses;
-        public bool putOtherDeathCauses;
-        public bool combatDebug;
-        public bool logPositions;
-
-        #endregion
-
-        #region Initializing
-
-        private void Init()
-        {
-            LoadVariables();
-        }
-
-        protected override void LoadDefaultConfig()
-        {
-            PrintWarning("Creating a new config file");
-            Config.Clear();
-            LoadVariables();
-        }
-
-        private void LoadVariables()
-        {
-            /// -- Combat -- ///
-            logCombat = Convert.ToBoolean(GetConfig("Combat Main Logging", "Log Combat Damage", false));
-            putCombat = Convert.ToBoolean(GetConfig("Combat Main Logging", "Print Combat Damage To Console", false));
-            logHealingItems = Convert.ToBoolean(GetConfig("Combat Main Logging", "Log Healing Items", false));
-            putHealingItems = Convert.ToBoolean(GetConfig("Combat Main Logging", "Print Healing Items To Console", false));
-            logRespawns = Convert.ToBoolean(GetConfig("Combat Main Logging", "Log Respawns", false));
-            putRespawns = Convert.ToBoolean(GetConfig("Combat Main Logging", "Print Respawns To Console", false));
-            combatDebug = Convert.ToBoolean(GetConfig("Combat Main Logging", "Print Debug Info To Console (Dev)", false));
-            logPositions = Convert.ToBoolean(GetConfig("Combat Main Logging", "Use Entity Position", false));
-            logEntityDistance = Convert.ToBoolean(GetConfig("Combat Main Logging", "Log Entity Distance", false));
-
-            logAnimalAttackPlayer = Convert.ToBoolean(GetConfig("Combat Hurt Logging", "Log Animal Attacking Player", false));
-            putAnimalAttackPlayer = Convert.ToBoolean(GetConfig("Combat Hurt Logging", "Print Animal Attacking Player To Console", false));
-            logPlayerAttackAnimal = Convert.ToBoolean(GetConfig("Combat Hurt Logging", "Log Player Attacking Animal", false));
-            putPlayerAttackAnimal = Convert.ToBoolean(GetConfig("Combat Hurt Logging", "Print Player Attacking Animal To Console", false));
-            logEntityAttackPlayer = Convert.ToBoolean(GetConfig("Combat Hurt Logging", "Log Entity Attack Player", false));
-            putEntityAttackPlayer = Convert.ToBoolean(GetConfig("Combat Hurt Logging", "Print Entity Attack Player To Console", false));
-
-            logAnimalKillPlayer = Convert.ToBoolean(GetConfig("Combat Death Logging", "Log Animal Killing Player", false));
-            putAnimalKillPlayer = Convert.ToBoolean(GetConfig("Combat Death Logging", "Print Animal Killing Player To Console", false));
-            logPlayerKillAnimal = Convert.ToBoolean(GetConfig("Combat Death Logging", "Log Player Killing Animal", false));
-            putPlayerKillAnimal = Convert.ToBoolean(GetConfig("Combat Death Logging", "Print Player Killing Animal To Console", false));
-            logEntityKillPlayer = Convert.ToBoolean(GetConfig("Combat Death Logging", "Log Entity Killing Player", false));
-            putEntityKillPlayer = Convert.ToBoolean(GetConfig("Combat Death Logging", "Print Entity Killing Player To Console", false));
-            logOtherDeathCauses = Convert.ToBoolean(GetConfig("Combat Death Logging", "Log Other Player Death Causes", false));
-            putOtherDeathCauses = Convert.ToBoolean(GetConfig("Combat Death Logging", "Print Other Player Death Causes To Console", false));
-
-            if (Changed)
-            {
-                SaveConfig();
-                Changed = false;
-            }
-        }
-
         protected override void LoadDefaultMessages()
         {
             lang.RegisterMessages(new Dictionary<string, string>
@@ -118,8 +34,6 @@ namespace Oxide.Plugins
                 ["Log At"] = "at",
             }, this);
         }
-
-        #endregion Initializing
 
         #region Combat
 
@@ -146,6 +60,7 @@ namespace Oxide.Plugins
 
         private void OnEntityTakeDamage(BaseEntity entity, HitInfo info)
         {
+            var config = configData.HurtLog;
             if (entity == null || info == null) return;
 
             var Bentity = entity as BaseCombatEntity;
@@ -164,7 +79,7 @@ namespace Oxide.Plugins
             if (dmg == 1000) return;
             if (CombatItemList(entity) != null && Eplayer == null) return;
             if (CombatConvert(entity) == null) return;
-            if (CombatItemList(Eattacker) != null && !logEntityAttackPlayer) return;
+            if (CombatItemList(Eattacker) != null && !config.) return;
             if (CombatNpcList(Eattacker) != null && !logAnimalAttackPlayer) return;
             if (CombatNpcList(entity) != null && !logPlayerAttackAnimal) return;
             if (CombatEntityList(entity) != null && CombatEntityList(Eattacker) != null) return;
@@ -443,6 +358,8 @@ namespace Oxide.Plugins
                     return "Cactus";
                 case "cactus-7":
                     return "Cactus";
+                case "minicopter.entity":
+                    return "Minicopter";
                 #endregion ITEMS
 
                 #region NPC
@@ -476,6 +393,10 @@ namespace Oxide.Plugins
                     return "Scientist";
                 case "ch47scientists.entity":
                     return "Chinook";
+                case "sentry.scientist.static":
+                    return "Outpost Sentry";
+                case "scientistpeacekeeper":
+                    return "Outpost Scientist";
                 #endregion NPC
 
                 #region MISC
@@ -546,6 +467,8 @@ namespace Oxide.Plugins
                     return "Cactus";
                 case "cactus-7":
                     return "Cactus";
+                case "minicopter.entity":
+                    return "Minicopter";
                 default:
                     return null;
             }
@@ -588,6 +511,10 @@ namespace Oxide.Plugins
                     return "Scientist";
                 case "ch47scientists.entity":
                     return "Chinook";
+                case "sentry.scientist.static":
+                    return "Outpost Sentry";
+                case "scientistpeacekeeper":
+                    return "Outpost Scientist";
                 default:
                     return null;
             }
@@ -697,17 +624,17 @@ namespace Oxide.Plugins
                 "machete.weapon", "murderer", "scientist",
                 "scientistjunkpile", "scientist_gunner",
                 "cactus-1", "cactus-2", "cactus-3", "cactus-4",
-                "cactus-5", "cactus-6", "cactus-7"
+                "cactus-5", "cactus-6", "cactus-7", "sentry.scientist.static"
             };
 
             return blacklist.Contains(entname);
         }
-     
+
         // List of other death causes
         List<string> DamageTypes = new List<string>
         {
-            "Hunger", "Thirst", "Cold", "Drowned",
-            "Poison", "Fall", "Radiation",
+            "Generic","Hunger","Thirst", "Cold", "Drowned", "Heat", "Bleeding", "Poison", "Suicide", "Bullet", "Slash", "Blunt", "Fall",
+            "Radiation", "Bite", "Stab", "Explosion", "RadiationExposure", "ColdExposure", "Decay", "ElectricShock", "Arrow","AntiVehicle", "Collision", "Fun_Water"
         };
 
         #endregion Lists
@@ -715,31 +642,6 @@ namespace Oxide.Plugins
         #endregion Entity Formatting
 
         #region Helpers
-
-        #region Config
-
-        private object GetConfig(string menu, string datavalue, object defaultValue)
-        {
-            var data = Config[menu] as Dictionary<string, object>;
-
-            if (data == null)
-            {
-                data = new Dictionary<string, object>();
-                Config[menu] = data;
-                Changed = true;
-            }
-
-            object value;
-
-            if (!data.TryGetValue(datavalue, out value))
-            {
-                value = defaultValue;
-                data[datavalue] = value;
-                Changed = true;
-            }
-            return value;
-        }
-        #endregion
 
         #region Data
 
@@ -817,5 +719,171 @@ namespace Oxide.Plugins
         ///     - Rocket kill (Can't get entity???)
 
         #endregion
+
+        #region Config
+        private ConfigData configData;
+
+        private class ConfigData
+        {
+            [JsonProperty(PropertyName = "Combat Logging Main")]
+            public LoggingMain LogMain { get; set; }
+            public class LoggingMain
+            {
+                [JsonProperty(PropertyName = "Log Combat Damage")]
+                public Options Damage { get; set; }
+
+                [JsonProperty(PropertyName = "Log Healing Items")]
+                public Options Healing { get; set; }
+
+                [JsonProperty(PropertyName = "Log Respawns")]
+                public Options Respawns { get; set; }
+
+                public class Options
+                {
+                    [JsonProperty(PropertyName = "Log to File")]
+                    public bool log { get; set; }
+
+                    [JsonProperty(PropertyName = "Log to Console")]
+                    public bool put { get; set; }
+                }
+            }
+
+            [JsonProperty(PropertyName = "Combat Hurt Logging")]
+            public HurtLogging HurtLog { get; set; }
+            public class HurtLogging
+            {
+                [JsonProperty(PropertyName = "Log Animal Attacking Player")]
+                public Options AvP { get; set; }
+
+                [JsonProperty(PropertyName = "Log Player Attacking Animal")]
+                public Options PvA { get; set; }
+
+                [JsonProperty(PropertyName = "Log Entity Attacking Player")]
+                public Options EvP { get; set; }
+
+                public class Options
+                {
+                    [JsonProperty(PropertyName = "Log to File")]
+                    public bool log { get; set; }
+
+                    [JsonProperty(PropertyName = "Log to Console")]
+                    public bool put { get; set; }
+                }
+            }
+
+            [JsonProperty(PropertyName = "Combat Hurt Logging")]
+            public DeathLogging DeathLog { get; set; }
+            public class DeathLogging
+            {
+                [JsonProperty(PropertyName = "Log Animal killing Player")]
+                public Options AvPD { get; set; }
+
+                [JsonProperty(PropertyName = "Log Player killing Animal")]
+                public Options PvAD { get; set; }
+
+                [JsonProperty(PropertyName = "Log Entity killing Player")]
+                public Options EvPD { get; set; }
+
+                [JsonProperty(PropertyName = "Log Other Player Death")]
+                public Options OtherDeath { get; set; }
+
+                public class Options
+                {
+                    [JsonProperty(PropertyName = "Log to File")]
+                    public bool log { get; set; }
+
+                    [JsonProperty(PropertyName = "Log to Console")]
+                    public bool put { get; set; }
+                }
+            }
+
+            [JsonProperty(PropertyName = "Use Entity Position")]
+            public bool EntityPostion { get; set; }
+
+            [JsonProperty(PropertyName = "Log Entity Distance")]
+            public bool EntityDistance { get; set; }
+
+            [JsonProperty(PropertyName = "Print Debug Info To Console (Dev)")]
+            public bool Debug { get; set; }
+
+            public Oxide.Core.VersionNumber Version { get; set; }
+        }
+
+        protected override void LoadConfig()
+        {
+            base.LoadConfig();
+            configData = Config.ReadObject<ConfigData>();
+
+            Config.WriteObject(configData, true);
+        }
+
+        protected override void LoadDefaultConfig() => configData = GetBaseConfig();
+
+        private ConfigData GetBaseConfig()
+        {
+            return new ConfigData
+            {
+                LogMain = new ConfigData.LoggingMain
+                {
+                    Damage = new ConfigData.LoggingMain.Options
+                    {
+                        log = true,
+                        put = true
+                    },
+                    Healing = new ConfigData.LoggingMain.Options
+                    {
+                        log = true,
+                        put = true
+                    },
+                    Respawns = new ConfigData.LoggingMain.Options
+                    {
+                        log = true,
+                        put = true
+                    },
+                },
+                HurtLog = new ConfigData.HurtLogging
+                {
+                    AvP = new ConfigData.HurtLogging.Options
+                    {
+                        log = true,
+                        put = true
+                    },
+                    EvP = new ConfigData.HurtLogging.Options
+                    {
+                        log = true,
+                        put = true
+                    },
+                    PvA = new ConfigData.HurtLogging.Options
+                    {
+                        log = true,
+                        put = true
+                    },
+                },
+                DeathLog = new ConfigData.DeathLogging
+                {
+                    AvPD = new ConfigData.DeathLogging.Options
+                    {
+                        log = true,
+                        put = true
+                    },
+                    EvPD = new ConfigData.DeathLogging.Options
+                    {
+                        log = true,
+                        put = true
+                    },
+                    PvAD = new ConfigData.DeathLogging.Options
+                    {
+                        log = true,
+                        put = true
+                    },
+                },
+                EntityDistance = true,
+                EntityPostion = true,
+                Debug = false,
+                Version = Version
+            };
+        }
+
+        #endregion Config
     }
 }
