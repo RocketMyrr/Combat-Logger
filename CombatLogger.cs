@@ -61,7 +61,64 @@ namespace Oxide.Plugins
         private void OnEntityTakeDamage(BaseEntity entity, HitInfo info)
         {
             var config = configData.HurtLog;
-            if (entity == null || info == null) return;
+            if (entity == null || info == null || info.Initiator == null) return;
+
+            if (info.InitiatorPlayer.userID.IsSteamId())
+            {
+                if (entity is BasePlayer)
+                {
+                    var victim = (BasePlayer)entity;
+                    var dmg = info.damageTypes.Total();
+
+                    if (entity == info.InitiatorPlayer)
+                    {
+                        if (configData.Debug) PrintWarning($"|SELF-HURT| Weapon: {info.Weapon?.GetItem()?.info?.displayName.english}  |  Weapon2: {info.WeaponPrefab}  |  Damage: {victim.lastDamage.ToString()}  |  Attacker: {info.InitiatorPlayer}  |  Victim: {victim}");
+                        if (configData.LogMain.Damage.log) Log("Combat", Lang("Log Player Hurt Himself1", CheckEntity(info.InitiatorPlayer), !CombatFireDamages(info) && CheckPrefab(info) ? $"{Lang("Log Weapon")} '{CombatWeapon(info)}' " : "", dmg, configData.EntityPostion ? $"{Lang("Log At")} {EntityPosition(entity)}" : null));
+                        if (configData.LogMain.Damage.put) Puts(Lang("Log Player Hurt Himself1", CheckEntity(info.InitiatorPlayer), !CombatFireDamages(info) && CheckPrefab(info) ? $"{Lang("Log Weapon")} '{CombatWeapon(info)}' " : "", dmg, configData.EntityPostion ? $"{Lang("Log At")} {EntityPosition(entity)}" : null));
+                        return;
+                    }
+                    else if (entity is BaseAnimalNPC)
+                    {
+                        var animal = (BaseAnimalNPC)entity;
+                        var animalmessage = Lang("Log Entity Attack1", animal.name, CombatConvert(info.InitiatorPlayer) ?? CombatEntity(info.InitiatorPlayer), (!BlacklistEntities(info.InitiatorPlayer) && CombatItemList(info.InitiatorPlayer) == null && PlayerCheck(info.InitiatorPlayer) && !CombatFireDamages(info) && CheckPrefab(info) ? $"{Lang("Log Weapon")} '{CombatWeapon(info)}' " : ""), dmg, (CombatItemList(info.InitiatorPlayer) == null && configData.EntityPostion ? GetDistance(animal, info) : null), configData.EntityPostion ? EntityPosition(animal) : null, configData.EntityPostion ? EntityPosition(info.InitiatorPlayer) : null);
+                        if (configData.HurtLog.PvA.log) Log("Combat", animalmessage);
+                        if (configData.HurtLog.PvA.put) Puts(animalmessage);
+                        if (configData.Debug) PrintWarning($"|PLAYER-ANIMAL| Weapon: {(info.Weapon?.GetItem()?.info?.displayName.english ?? "No Weapon")}  |  Weapon2: {(info.WeaponPrefab ?? null)}  |  Damage: {(animal.lastDamage.ToString() ?? "No Damage")}  |  Attacker: {(info.InitiatorPlayer)}  |  Victim: {(entity.ShortPrefabName ?? "No Victim")}");
+                        return;
+                    }
+
+                    var pvpmessage = Lang("Log Entity Attack1", CombatConvert(entity) ?? CombatEntity(entity), CombatConvert(info.InitiatorPlayer) ?? CombatEntity(info.InitiatorPlayer), (!BlacklistEntities(info.InitiatorPlayer) && CombatItemList(info.InitiatorPlayer) == null && PlayerCheck(info.InitiatorPlayer) && !CombatFireDamages(info) && CheckPrefab(info) ? $"{Lang("Log Weapon")} '{CombatWeapon(info)}' " : ""), dmg, (CombatItemList(info.InitiatorPlayer) == null && configData.EntityPostion ? GetDistance(victim, info) : null), configData.EntityPostion ? EntityPosition(entity) : null, configData.EntityPostion ? EntityPosition(info.InitiatorPlayer) : null);
+                    if (configData.LogMain.Damage.log) Log("Combat", pvpmessage);
+                    if (configData.LogMain.Damage.put) Puts(pvpmessage);
+                    return;
+                }
+            }
+            else
+            {
+                if (info.Initiator is BaseAnimalNPC && entity.ToPlayer().userID.IsSteamId())
+                {
+                    var animal = (BaseAnimalNPC)info.Initiator;
+                    var victim = entity.ToPlayer();
+                    var dmg = info.damageTypes.Total();
+                    var animalmessage = Lang("Log Entity Attack1", animal.name, CombatConvert(info.InitiatorPlayer) ?? CombatEntity(info.InitiatorPlayer), (!BlacklistEntities(info.InitiatorPlayer) && CombatItemList(info.InitiatorPlayer) == null && PlayerCheck(info.InitiatorPlayer) && !CombatFireDamages(info) && CheckPrefab(info) ? $"{Lang("Log Weapon")} '{CombatWeapon(info)}' " : ""), dmg, (CombatItemList(info.InitiatorPlayer) == null && configData.EntityPostion ? GetDistance(animal, info) : null), configData.EntityPostion ? EntityPosition(animal) : null, configData.EntityPostion ? EntityPosition(info.InitiatorPlayer) : null);
+                    if (configData.HurtLog.AvP.log) Log("Combat", animalmessage);
+                    if (configData.HurtLog.AvP.put) Puts(animalmessage);
+                    if (configData.Debug) PrintWarning($"|Animal-Player| Damage: {(victim.lastDamage.ToString() ?? "No Damage")}  |  Attacker: {(animal.name)}  |  Victim: {victim}");
+                    return;
+                }
+                if (info.Initiator is ScientistNPC && entity.ToPlayer().userID.IsSteamId())
+                {
+                    var npc = (ScientistNPC)info.Initiator;
+                    var victim = entity.ToPlayer();
+                    var dmg = info.damageTypes.Total();
+                    var animalmessage = Lang("Log Entity Attack1", npc.name, CombatConvert(info.InitiatorPlayer) ?? CombatEntity(info.InitiatorPlayer), (!BlacklistEntities(info.InitiatorPlayer) && CombatItemList(info.InitiatorPlayer) == null && PlayerCheck(info.InitiatorPlayer) && !CombatFireDamages(info) && CheckPrefab(info) ? $"{Lang("Log Weapon")} '{CombatWeapon(info)}' " : ""), dmg, (CombatItemList(info.InitiatorPlayer) == null && configData.EntityPostion ? GetDistance(npc, info) : null), configData.EntityPostion ? EntityPosition(npc) : null, configData.EntityPostion ? EntityPosition(info.InitiatorPlayer) : null);
+                    if (configData.HurtLog.AvP.log) Log("Combat", animalmessage);
+                    if (configData.HurtLog.AvP.put) Puts(animalmessage);
+                    if (configData.Debug) PrintWarning($"|Animal-Player| Damage: {(victim.lastDamage.ToString() ?? "No Damage")}  |  Attacker: {(npc.name)}  |  Victim: {victim}");
+                    return;
+                }
+                if ()
+            }
 
             var Bentity = entity as BaseCombatEntity;
             var Eattacker = info.Initiator as BaseEntity;
@@ -73,7 +130,7 @@ namespace Oxide.Plugins
 
             var Eplayer = entity as BasePlayer;
             var Pattacker = info.Initiator as BasePlayer;
-            var dmg = info.damageTypes.Total();
+            var dmgs = info.damageTypes.Total();
 
             // Doing checks to see if it's supposed to log certain lists.
             if (dmg == 1000) return;
