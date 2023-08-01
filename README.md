@@ -1,6 +1,22 @@
 # Combat Logger
 Logs everything related to combat
 
+**Will Log**:
+- Use of Healing Items
+- When a Player is Downed
+- Player vs Player
+- Player vs NPC
+- NPC vs Player
+- Entity vs Player
+- Player vs Animal
+- Animal vs Player
+- Other Player Death (Fall, Drown, etc..)
+
+**Option to Log Extras**:
+- Body Part Hit
+- Show if the player was sleeping
+- Show Players being attacked while sleeping
+
 ## Configuration
 
 Default configuration:
