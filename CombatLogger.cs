@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Combat Logger", "Tori1157/RocketMyrr", "2.0.0")]
+    [Info("Combat Logger", "Tori1157/RocketMyrr", "2.0.1")]
     [Description("Logs everything related to combat.")]
     class CombatLogger : RustPlugin
     {
@@ -187,7 +187,7 @@ namespace Oxide.Plugins
                 if (configData.HurtLog.EvP.Log && configData.LogMain.Damage.Log) Log(apcMessage);
                 return;
             }
-            if (info.Initiator is BaseHelicopter || info?.WeaponPrefab?.ShortPrefabName == "rocket_heli")
+            if (info.Initiator is PatrolHelicopter || info?.WeaponPrefab?.ShortPrefabName == "rocket_heli")
             {
                 var heliMessage = Lang("Log Entity Attack1", CleanName(victimPlayer), "Patrol Helicopter", "", dmgPlayer, info.Initiator.IsValid() ? GetDistance(victimPlayer, info) : "", victimPlayer.transform.position, info.Initiator.IsValid() ? info.Initiator.transform.position.ToString() : "", GetBodypartName(info));
                 if (configData.HurtLog.EvP.Put && configData.LogMain.Damage.Put) Puts(heliMessage);
@@ -246,7 +246,7 @@ namespace Oxide.Plugins
                     if (configData.HurtLog.EvP.Log && configData.LogMain.Damage.Log) Log(apcMessage);
                     return;
                 }
-                if (victimPlayer.lastAttacker is BaseHelicopter || victimPlayer.lastAttacker?.ShortPrefabName == "rocket_heli")
+                if (victimPlayer.lastAttacker is PatrolHelicopter || victimPlayer.lastAttacker?.ShortPrefabName == "rocket_heli")
                 {
                     var heliMessage = Lang("Log Entity Attack1", CleanName(victimPlayer), "Patrol Helicopter", "", dmgPlayer, victimPlayer.lastAttacker.IsValid() ? GetDistanceAttacker(victimPlayer, victimPlayer.lastAttacker) : "", victimPlayer.transform.position, victimPlayer.lastAttacker.IsValid() ? victimPlayer.lastAttacker.transform.position.ToString() : "", GetBodypartName(info));
                     if (configData.HurtLog.EvP.Put && configData.LogMain.Damage.Put) Puts(heliMessage);
@@ -381,7 +381,7 @@ namespace Oxide.Plugins
                 if (configData.DeathLog.EvPD.Log && configData.LogMain.Death.Log) Log(apcMessage);
                 return;
             }
-            if (info.Initiator is BaseHelicopter || info?.WeaponPrefab?.ShortPrefabName == "rocket_heli")
+            if (info.Initiator is PatrolHelicopter || info?.WeaponPrefab?.ShortPrefabName == "rocket_heli")
             {
                 var heliMessage = Lang("Log Entity Death1", CleanName(victimPlayer), "Patrol Helicopter", "", info.Initiator.IsValid() ? GetDistance(victimPlayer, info) : "", victimPlayer.transform.position, info.Initiator.IsValid() ? info.Initiator.transform.position.ToString() : "");
                 if (configData.DeathLog.EvPD.Put && configData.LogMain.Death.Put) Puts(heliMessage);
