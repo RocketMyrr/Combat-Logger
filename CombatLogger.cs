@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Combat Logger", "Tori1157/RocketMyrr", "2.0.1")]
+    [Info("Combat Logger", "Tori1157/RocketMyrr", "2.0.2")]
     [Description("Logs everything related to combat.")]
     class CombatLogger : RustPlugin
     {
@@ -136,6 +136,7 @@ namespace Oxide.Plugins
                             if (configData.Debug) Log($"|PLAYER-NPC| Weapon: {info.Weapon?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.ToString() ?? info.Initiator?.ShortPrefabName}  |  Weapon2: {info.WeaponPrefab?.ToString() ?? "unable"}  |  Damage: {dmg} |  Attacker: {info.InitiatorPlayer} {info.Initiator.transform.position}  |  Victim: {entity.ShortPrefabName ?? "No Victim"} {entity.transform.position} | Distance: {GetDistance(entity, info)}");
                             return;
                         }
+                        return;
                     }
                 }
             }
@@ -336,6 +337,7 @@ namespace Oxide.Plugins
                             if (configData.Debug) Log($"|PLAYER-NPC Death| Weapon: {info.Weapon?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.ToString() ?? info.Initiator?.ShortPrefabName}  |  Weapon2: {info.WeaponPrefab?.ToString() ?? "unable"}  |  Damage:  |  Attacker: {info.InitiatorPlayer} {info.Initiator.transform.position}  |  Victim: {entity.ShortPrefabName ?? "No Victim"} {entity.transform.position} | Distance: {GetDistance(entity, info)}");
                             return;
                         }
+                        return;
                     }
                 }
             }
