@@ -2,10 +2,12 @@ using Rust;
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Rust.Ai.Gen2;
+using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Combat Logger", "Tori1157/RocketMyrr", "2.0.2")]
+    [Info("Combat Logger", "Tori1157/RocketMyrr", "2.0.6")]
     [Description("Logs everything related to combat.")]
     class CombatLogger : RustPlugin
     {
@@ -27,7 +29,7 @@ namespace Oxide.Plugins
                 Subscribe(nameof(OnEntityDeath));
 
             if (configData.LogMain.Respawns.Log || configData.LogMain.Respawns.Put)
-                Subscribe(nameof(OnPlayerRespawn));
+                Subscribe(nameof(OnPlayerRespawned));
 
             if (configData.LogMain.Wound.Log || configData.LogMain.Wound.Put)
                 Subscribe(nameof(OnPlayerWound));
@@ -45,30 +47,54 @@ namespace Oxide.Plugins
             Unsubscribe(nameof(OnItemUse));
             Unsubscribe(nameof(OnEntityTakeDamage));
             Unsubscribe(nameof(OnEntityDeath));
-            Unsubscribe(nameof(OnPlayerRespawn));
+            Unsubscribe(nameof(OnPlayerRespawned));
             Unsubscribe(nameof(OnPlayerWound));
         }
 
         #region Healing
         private void OnHealingItemUse(MedicalTool item, BasePlayer target)
         {
-            if (item == null || target == null) return;
-            if (configData.LogMain.Healing.Log) Log(Lang("Log Player Healing1", target.displayName, target.userID, item.GetItem().info.displayName?.english, target.transform.position, target.health));
-            if (configData.LogMain.Healing.Put) Puts(Lang("Log Player Healing1", target.displayName, target.userID, item.GetItem().info.displayName?.english, target.transform.position, target.health));
+            if (item == null || target == null)
+                return;
+
+            var usedItem = item.GetItem();
+            if (usedItem?.info == null)
+                return;
+
+            string displayName = usedItem.info.displayName?.english ?? usedItem.info.shortname ?? usedItem.info.name ?? "Unknown Item";
+            string position = target.transform?.position.ToString() ?? Vector3.zero.ToString();
+            float health = target.health;
+
+            if (configData.LogMain.Healing.Log)
+                Log(Lang("Log Player Healing1", target.displayName, target.userID, displayName, position, health));
+
+            if (configData.LogMain.Healing.Put)
+                Puts(Lang("Log Player Healing1", target.displayName, target.userID, displayName, position, health));
         }
+
 
         private void OnItemUse(Item item, int amountToUse)
         {
             if (item == null) return;
-            var player = item?.parent?.GetOwnerPlayer();
+
+            var player = item.parent?.GetOwnerPlayer();
             if (player == null) return;
 
-            if (item.info.shortname == "largemedkit")
+            string[] healingItems = { "largemedkit", "syringe_medical", "bandage" };
+            if (healingItems.Contains(item.info?.shortname))
             {
-                if (configData.LogMain.Healing.Log) Log(Lang("Log Player Healing1", player.displayName, player.userID, item.info.displayName?.english, $"{Lang("Log At")} {player.transform.position}", player.health));
-                if (configData.LogMain.Healing.Put) Puts(Lang("Log Player Healing1", player.displayName, player.userID, item.info.displayName?.english, $"{Lang("Log At")} {player.transform.position}", player.health));
+                string displayName = item.info.displayName?.english ?? item.info.shortname ?? item.info.name ?? "Unknown Item";
+                string position = $"{Lang("Log At")} {player.transform?.position ?? Vector3.zero}";
+                float health = player.health;
+
+                if (configData.LogMain.Healing.Log)
+                    Log(Lang("Log Player Healing1", player.displayName, player.userID, displayName, position, health));
+
+                if (configData.LogMain.Healing.Put)
+                    Puts(Lang("Log Player Healing1", player.displayName, player.userID, displayName, position, health));
             }
         }
+
         #endregion Healing
 
         #region Combat
@@ -104,10 +130,11 @@ namespace Oxide.Plugins
 
                     if (entity.IsNpc || (entity is BasePlayer && !entity.ToPlayer().UserIDString.IsSteamId())) //Some Plugins use Weird Classes that arent detected by IsNPC, I know IsSteamId is redundant but just covering basis
                     {
-                        if (entity is BaseAnimalNPC)
+                        if (entity is BaseAnimalNPC || entity is RidableHorse || entity is BeeSwarmAI || entity is BaseNPC2 || entity is WildlifeHazard)
                         {
                             if (!configData.HurtLog.PvA.Put && !configData.HurtLog.PvA.Log) return;
-                            var animalmessage = Lang("Log Entity Attack1", entity.ShortPrefabName + "[NPC]", CleanName(info.InitiatorPlayer), $"{Lang("Log Weapon")} '{info.Weapon?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.ToString() ?? FireCheck(info) ?? info.InitiatorPlayer?.GetHeldEntity()?.GetItem()?.info?.displayName?.english ?? info.Initiator?.ShortPrefabName ?? info.damageTypes.GetMajorityDamageType().ToString() ?? "Unknown"}' ", dmg, GetDistance(entity, info), entity.transform.position, info.InitiatorPlayer.transform.position, "");
+                            string animalName = entity.ShortPrefabName;
+                            var animalmessage = Lang("Log Entity Attack1", $"{char.ToUpper(animalName[0])}{animalName.Substring(1)}[Animal]", CleanName(info.InitiatorPlayer), $"{Lang("Log Weapon")} '{info.Weapon?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.ToString() ?? FireCheck(info) ?? info.InitiatorPlayer?.GetHeldEntity()?.GetItem()?.info?.displayName?.english ?? info.Initiator?.ShortPrefabName ?? info.damageTypes.GetMajorityDamageType().ToString() ?? "Unknown"}' ", dmg, GetDistance(entity, info), entity.transform.position, info.InitiatorPlayer.transform.position, "");
                             if (configData.HurtLog.PvA.Log && configData.LogMain.Damage.Log) Log(animalmessage);
                             if (configData.HurtLog.PvA.Put && configData.LogMain.Damage.Put) Puts(animalmessage);
                             if (configData.Debug) Log($"|PLAYER-ANIMAL| Weapon: {info.Weapon?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.ToString() ?? info.Initiator?.ShortPrefabName}  |  Weapon2: {info.WeaponPrefab?.ToString() ?? "unable"}  |  Damage: {dmg} |  Attacker: {info.InitiatorPlayer} {info.Initiator.transform.position}  |  Victim: {entity.ShortPrefabName ?? "No Victim"} {entity.transform.position} | Distance: {GetDistance(entity, info)}");
@@ -151,9 +178,10 @@ namespace Oxide.Plugins
 
             var dmgPlayer = Math.Round(info.damageTypes.Total(), 2).ToString();
 
-            if (info.Initiator is BaseAnimalNPC)
+            if (info.Initiator is BaseAnimalNPC || info.Initiator is RidableHorse || info.Initiator is BeeSwarmAI || info.Initiator is WildlifeHazard || info.Initiator is BaseNPC2)
             {
-                var animalmessage = Lang("Log Entity Attack1", CleanName(victimPlayer), $"{info.Initiator?.ShortPrefabName ?? victimPlayer.lastAttacker?.ShortPrefabName ?? "Unknown"}[NPC]", "", dmgPlayer, GetDistance(victimPlayer, info), victimPlayer.transform.position, info.Initiator.IsValid() ? info.Initiator.transform.position.ToString() : "", "");
+                string animalName = info.Initiator?.ShortPrefabName ?? victimPlayer.lastAttacker?.ShortPrefabName ?? "Unknown";
+                var animalmessage = Lang("Log Entity Attack1", CleanName(victimPlayer), $"{char.ToUpper(animalName[0])}{animalName.Substring(1)}[Animal]", "", dmgPlayer, GetDistance(victimPlayer, info), victimPlayer.transform.position, info.Initiator.IsValid() ? info.Initiator.transform.position.ToString() : "", "");
                 if (configData.HurtLog.AvP.Log && configData.LogMain.Damage.Log) Log(animalmessage);
                 if (configData.HurtLog.AvP.Put && configData.LogMain.Damage.Put) Puts(animalmessage);
                 return;
@@ -210,9 +238,10 @@ namespace Oxide.Plugins
 
             if (victimPlayer.lastAttacker != null) // For Somereason the above checks do not catch everything when the damage is less then 1. This will catch alot of it, but there still a very few that slip through
             {
-                if (victimPlayer.lastAttacker is BaseAnimalNPC)
+                if (victimPlayer.lastAttacker is BaseAnimalNPC || victimPlayer.lastAttacker is RidableHorse || victimPlayer.lastAttacker is BeeSwarmAI || victimPlayer.lastAttacker is BaseNPC2 || victimPlayer.lastAttacker is WildlifeHazard)
                 {
-                    var animalmessage = Lang("Log Entity Attack1", CleanName(victimPlayer), $"{victimPlayer.lastAttacker?.ShortPrefabName ?? victimPlayer.lastAttacker?.ShortPrefabName ?? "Unknown"}[NPC]", "", dmgPlayer, GetDistanceAttacker(victimPlayer, victimPlayer.lastAttacker), victimPlayer.transform.position, victimPlayer.lastAttacker.IsValid() ? victimPlayer.lastAttacker.transform.position.ToString() : "", "");
+                    string animalName = $"{victimPlayer.lastAttacker?.ShortPrefabName ?? victimPlayer.lastAttacker?.ShortPrefabName ?? "Unknown"}";
+                    var animalmessage = Lang("Log Entity Attack1", CleanName(victimPlayer), $"{char.ToUpper(animalName[0])}{animalName.Substring(1)}[Animal]", "", dmgPlayer, GetDistanceAttacker(victimPlayer, victimPlayer.lastAttacker), victimPlayer.transform.position, victimPlayer.lastAttacker.IsValid() ? victimPlayer.lastAttacker.transform.position.ToString() : "", "");
                     if (configData.HurtLog.AvP.Log && configData.LogMain.Damage.Log) Log(animalmessage);
                     if (configData.HurtLog.AvP.Put && configData.LogMain.Damage.Put) Puts(animalmessage);
                     return;
@@ -307,10 +336,11 @@ namespace Oxide.Plugins
 
                     if (entity.IsNpc || (entity is BasePlayer && !entity.ToPlayer().UserIDString.IsSteamId())) //Some Plugins use Weird Classes that arent detected by IsNPC, I know IsSteamId is redundant but just covering basis
                     {
-                        if (entity is BaseAnimalNPC)
+                        if (entity is BaseAnimalNPC || entity is RidableHorse || entity is BeeSwarmAI || entity is BaseNPC2 || entity is WildlifeHazard)
                         {
                             if (!configData.DeathLog.PvAD.Put && !configData.DeathLog.PvAD.Log) return;
-                            var animalmessage = Lang("Log Entity Death1", entity.ShortPrefabName + "[NPC]", CleanName(info.InitiatorPlayer ?? entity.lastAttacker.ToPlayer()), $"{Lang("Log Weapon")} '{info.Weapon?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.ToString() ?? FireCheck(info) ?? info.Initiator?.ShortPrefabName ?? info.InitiatorPlayer?.GetHeldEntity()?.GetItem()?.info?.displayName?.english ?? info.damageTypes.GetMajorityDamageType().ToString() ?? "Unknown"}' ", GetDistance(entity, info), entity.transform.position, info.InitiatorPlayer.transform.position);
+                            string animalName = entity.ShortPrefabName;
+                            var animalmessage = Lang("Log Entity Death1", $"{char.ToUpper(animalName[0])}{animalName.Substring(1)}[Animal]", CleanName(info.InitiatorPlayer ?? entity.lastAttacker.ToPlayer()), $"{Lang("Log Weapon")} '{info.Weapon?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.ToString() ?? FireCheck(info) ?? info.Initiator?.ShortPrefabName ?? info.InitiatorPlayer?.GetHeldEntity()?.GetItem()?.info?.displayName?.english ?? info.damageTypes.GetMajorityDamageType().ToString() ?? "Unknown"}' ", GetDistance(entity, info), entity.transform.position, info.InitiatorPlayer.transform.position);
                             if (configData.DeathLog.PvAD.Log && configData.LogMain.Death.Log) Log(animalmessage);
                             if (configData.DeathLog.PvAD.Put && configData.LogMain.Death.Put) Puts(animalmessage);
                             return;
@@ -346,9 +376,10 @@ namespace Oxide.Plugins
             if (victimPlayer == null) return;
             if (!victimPlayer.UserIDString.IsSteamId()) return;
 
-            if (info.Initiator is BaseAnimalNPC)
+            if (info.Initiator is BaseAnimalNPC || info.Initiator is RidableHorse || info.Initiator is BeeSwarmAI || info.Initiator is BaseNPC2 || info.Initiator is WildlifeHazard)
             {
-                var animalmessage = Lang("Log Entity Death1", CleanName(victimPlayer), $"{info.Initiator?.ShortPrefabName ?? victimPlayer.lastAttacker?.ShortPrefabName ?? "Unknown"}[NPC]", "", GetDistance(victimPlayer, info), victimPlayer.transform.position, info.Initiator.IsValid() ? info.Initiator.transform.position.ToString() : "");
+                string animalName = info.Initiator?.ShortPrefabName ?? victimPlayer.lastAttacker?.ShortPrefabName ?? "Unknown";
+                var animalmessage = Lang("Log Entity Death1", CleanName(victimPlayer), $"{char.ToUpper(animalName[0])}{animalName.Substring(1)}[Animal]", "", GetDistance(victimPlayer, info), victimPlayer.transform.position, info.Initiator.IsValid() ? info.Initiator.transform.position.ToString() : "");
                 if (configData.DeathLog.AvPD.Log && configData.LogMain.Death.Log) Log(animalmessage);
                 if (configData.DeathLog.AvPD.Put && configData.LogMain.Death.Put) Puts(animalmessage);
                 return;
@@ -430,9 +461,10 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (info.Initiator is BaseAnimalNPC)
+            if (info.Initiator is BaseAnimalNPC || info.Initiator is RidableHorse || info.Initiator is BeeSwarmAI || info.Initiator is BaseNPC2 || info.Initiator is WildlifeHazard)
             {
-                var animalmessage = Lang("Log Entity Wounded1", CleanName(victimPlayer), $"{info.Initiator?.ShortPrefabName ?? victimPlayer.lastAttacker?.ShortPrefabName ?? "Unknown"}[NPC]", "", GetDistance(victimPlayer, info), victimPlayer.transform.position, info.Initiator.IsValid() ? info.Initiator.transform.position.ToString() : "");
+                string animalName = info.Initiator?.ShortPrefabName ?? victimPlayer.lastAttacker?.ShortPrefabName ?? "Unknown";
+                var animalmessage = Lang("Log Entity Wounded1", CleanName(victimPlayer), $"{char.ToUpper(animalName[0])}{animalName.Substring(1)}[Animal]", "", GetDistance(victimPlayer, info), victimPlayer.transform.position, info.Initiator.IsValid() ? info.Initiator.transform.position.ToString() : "");
                 if (configData.HurtLog.AvP.Log && configData.LogMain.Damage.Log) Log(animalmessage);
                 if (configData.HurtLog.AvP.Put && configData.LogMain.Damage.Put) Puts(animalmessage);
                 return;
@@ -462,7 +494,7 @@ namespace Oxide.Plugins
         #endregion Combat
 
         #region Respawn
-        private void OnPlayerRespawn(BasePlayer player)
+        private void OnPlayerRespawned(BasePlayer player)
         {
             if (player == null) return;
             if (configData.LogMain.Respawns.Log) Log(Lang("Log Player Respawning1", player.displayName ?? player.name, player.UserIDString, $"{Lang("Log At")} {player.transform?.position.ToString() ?? ""}"));
